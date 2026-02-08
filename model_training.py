@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import root_mean_squared_error, r2_score, mean_squared_error, mean_absolute_error
+from sklearn.linear_model import LinearRegression
 
 import mlflow
 import mlflow.sklearn
@@ -130,8 +131,43 @@ def hyperparam_tuning(X_train, X_test, y_train, y_test):
         mlflow.sklearn.log_model(
                 grid_search.best_estimator_,
                 artifact_path="model",
-                registered_model_name="BikePredictionModel"
+                registered_model_name="BikePredictionModel",
             )
+
+
+def linear_regression(X_train, X_test, y_train, y_test):
+    regression = LinearRegression()
+
+    with mlflow.start_run(run_name="staging") as run:
+        regression.fit(X_train, y_train)
+
+
+        test_preds = regression.predict(X_test)
+
+        test_rmse = np.sqrt(mean_squared_error(y_test, test_preds))
+
+        mlflow.log_metric("test_RMSE", test_rmse)
+
+
+        # mlflow.set_tag("algo", "Regression")
+        mlflow.sklearn.log_model(
+            sk_model=regression,
+            artifact_path="model",
+            registered_model_name="BikePredictionModel",
+        )
+
+        from mlflow.tracking import MlflowClient
+
+        client = MlflowClient()
+
+        client.set_model_version_tag(
+            name="BikePredictionModel",
+            version="5",
+            key="model",
+            value="linear regression"
+        )
+
+
 
 
 
@@ -144,8 +180,9 @@ def main():
     df = read_file(file)
     df = preprocessing(df)
     X_train, X_test, y_train, y_test = split_data(df)
-    train_model(X_train, X_test, y_train, y_test)
+    # train_model(X_train, X_test, y_train, y_test)
     # hyperparam_tuning(X_train, X_test, y_train, y_test)
+    linear_regression(X_train, X_test, y_train, y_test)
 
 
 
